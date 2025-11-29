@@ -1,0 +1,44 @@
+version: "3.9"
+
+services:
+  kafka:
+    image: bitnami/kafka:latest
+    container_name: supplier-delivery-kafka
+    environment:
+      - KAFKA_ENABLE_KRAFT=yes
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_NODE_ID=1
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+      - ALLOW_PLAINTEXT_LISTENER=yes
+    ports:
+      - "9092:9092"
+
+  producer-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.producer
+    container_name: supplier-delivery-producer
+    depends_on:
+      - kafka
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - Kafka__BootstrapServers=kafka:9092
+      - Kafka__Topic=product-dispatches
+      - Kafka__ClientId=supplier-delivery-producer
+    ports:
+      - "8080:8080"
+
+  consumer-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.consumer
+    container_name: supplier-delivery-consumer
+    depends_on:
+      - kafka
+    environment:
+      - Kafka__BootstrapServers=kafka:9092
+      - Kafka__Topic=product-dispatches
+      - Kafka__GroupId=supplier-delivery-consumer

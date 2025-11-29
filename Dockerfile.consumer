@@ -1,0 +1,20 @@
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+
+COPY SupplierDelivery.sln .
+COPY src/SupplierDelivery.Domain/SupplierDelivery.Domain.csproj src/SupplierDelivery.Domain/
+COPY src/SupplierDelivery.Producer.Api/SupplierDelivery.Producer.Api.csproj src/SupplierDelivery.Producer.Api/
+COPY src/SupplierDelivery.Consumer.Worker/SupplierDelivery.Consumer.Worker.csproj src/SupplierDelivery.Consumer.Worker/
+
+RUN dotnet restore SupplierDelivery.sln
+
+COPY . .
+
+RUN dotnet publish src/SupplierDelivery.Consumer.Worker/SupplierDelivery.Consumer.Worker.csproj -c Release -o /app/publish
+
+FROM mcr.microsoft.com/dotnet/runtime:10.0 AS final
+WORKDIR /app
+
+COPY --from=build /app/publish .
+
+ENTRYPOINT ["dotnet", "SupplierDelivery.Consumer.Worker.dll"]
