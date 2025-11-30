@@ -1,24 +1,24 @@
 # SupplierDelivery
 
-Solucao simples de produtor e consumidor Kafka em .NET 10 usando dominio de "envio de produtos para fornecedores".
+Simple Kafka producer/consumer solution in .NET 10 using the "dispatch products to suppliers" domain.
 
-## Estrutura
-- `src/SupplierDelivery.Domain`: contratos e entidades (DDD), sem dependencias de infra.
-- `src/SupplierDelivery.Producer.Api`: API minimalista para receber payloads e publicar no Kafka.
-- `src/SupplierDelivery.Consumer.Worker`: worker que consome do Kafka e encaminha via HTTP.
-- `Dockerfile.producer`, `Dockerfile.consumer`, `docker-compose.yml`: containers das apps e Kafka.
+## Structure
+- `src/SupplierDelivery.Domain`: contracts and entities (DDD), no infra dependencies.
+- `src/SupplierDelivery.Producer.Api`: minimal API that receives payloads and publishes to Kafka.
+- `src/SupplierDelivery.Consumer.Worker`: worker that consumes from Kafka and forwards via HTTP.
+- `Dockerfile.producer`, `Dockerfile.consumer`, `docker-compose.yml`: app containers and Kafka.
 
-## Pre-requisitos
+## Prerequisites
 - Docker Desktop
-- Opcional: .NET 10 SDK para builds locais
+- Optional: .NET 10 SDK for local builds
 
-## Executar com Docker Compose
+## Run with Docker Compose
 ```bash
 docker compose up --build
 ```
-Isso sobe Kafka, API em `http://localhost:8080` e worker consumindo o topico `product-dispatches`.
+This spins up Kafka, the API at `http://localhost:8080`, and the worker consuming the `product-dispatches` topic.
 
-## Enviar um dispatch
+## Send a dispatch
 ```bash
 curl -X POST http://localhost:8080/dispatches \
   -H "Content-Type: application/json" \
@@ -27,32 +27,32 @@ curl -X POST http://localhost:8080/dispatches \
     "productCode": "SKU-123",
     "quantity": 5,
     "targetEndpoint": "http://example.com/api/receiving",
-    "notes": "lote teste"
+    "notes": "test batch"
   }'
 ```
-A mensagem sera publicada no Kafka e o worker tentara POSTar o mesmo payload no `targetEndpoint`.
+The message will be published to Kafka and the worker will try to POST the same payload to the `targetEndpoint`.
 
-Para testar localmente, voce pode usar a API falsa em `src/SupplierDelivery.TargetEndpoint.Api`, que expoe `POST /api/receiving` e apenas responde com 202 (sem corpo). Suba com:
+To test locally you can use the fake API in `src/SupplierDelivery.TargetEndpoint.Api`, which exposes `POST /api/receiving` and simply returns 202 (no body). Start it with:
 ```bash
 dotnet run --project src/SupplierDelivery.TargetEndpoint.Api/SupplierDelivery.TargetEndpoint.Api.csproj --urls http://localhost:7070
 ```
-Depois envie o `targetEndpoint` como `http://localhost:7070/api/receiving`.
+Then send `targetEndpoint` as `http://localhost:7070/api/receiving`.
 
-## Teste de carga (k6)
-- Pre-requisito: k6 instalado (docs: https://grafana.com/docs/k6/latest/).
-- Suba a stack: `docker compose up --build`.
-- Rode o teste (fora do Docker): `BASE_URL=http://localhost:8080 k6 run tests/load/k6/producer-load.js`.
-- O script chama `POST /dispatches` e usa `http://target-endpoint:7070/api/receiving` como destino interno; ajuste `BASE_URL` se a API expuser outra porta/host.
-- Thresholds do script: `http_req_failed<1%` e p95 de duracao < 800ms; use a saida do k6 para avaliar.
+## Load test (k6)
+- Prerequisite: k6 installed (docs: https://grafana.com/docs/k6/latest/).
+- Bring up the stack: `docker compose up --build`.
+- Run the test (outside Docker): `BASE_URL=http://localhost:8080 k6 run tests/load/k6/producer-load.js`.
+- The script calls `POST /dispatches` and uses `http://target-endpoint:7070/api/receiving` as the internal destination; adjust `BASE_URL` if the API is exposed on a different port/host.
+- Script thresholds: `http_req_failed<1%` and p95 duration < 800ms; use the k6 output to evaluate.
 
-## Configuracao
-- Ajuste `appsettings*.json` para endpoints, topico e bootstrap servers.
-- Variaveis de ambiente `Kafka__BootstrapServers`, `Kafka__Topic`, `Kafka__ClientId`, `Kafka__GroupId` podem sobrescrever.
+## Configuration
+- Adjust `appsettings*.json` for endpoints, topic, and bootstrap servers.
+- Environment variables `Kafka__BootstrapServers`, `Kafka__Topic`, `Kafka__ClientId`, `Kafka__GroupId` can override.
 
 ## Logs
-- Serilog configurado para console com niveis Info/Warn/Error. Use `Serilog:MinimumLevel=Debug` para mais verbosidade em dev.
+- Serilog configured for console with Info/Warn/Error levels. Use `Serilog:MinimumLevel=Debug` for more verbosity in dev.
 
-## Build local
+## Local build
 ```bash
 dotnet build SupplierDelivery.sln -v minimal
 ```
