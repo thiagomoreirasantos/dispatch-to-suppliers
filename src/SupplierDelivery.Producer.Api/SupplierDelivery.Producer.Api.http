@@ -1,6 +1,18 @@
-@SupplierDelivery.Producer.Api_HostAddress = http://localhost:5229
+@producer_host = http://localhost:8080
+@target_endpoint = http://target-endpoint:7070/api/receiving
 
-GET {{SupplierDelivery.Producer.Api_HostAddress}}/weatherforecast/
+### Health check
+GET {{producer_host}}/health
 Accept: application/json
 
-###
+### Create dispatch
+POST {{producer_host}}/dispatches
+Content-Type: application/json
+
+{
+  "supplierId": "acme",
+  "productCode": "SKU-123",
+  "quantity": 5,
+  "targetEndpoint": "{{target_endpoint}}",
+  "notes": "teste via dotnet http"
+}

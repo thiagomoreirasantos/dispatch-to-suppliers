@@ -32,6 +32,12 @@ curl -X POST http://localhost:8080/dispatches \
 ```
 A mensagem será publicada no Kafka e o worker tentará POSTar o mesmo payload no `targetEndpoint`.
 
+Para testar localmente, você pode usar a API falsa em `src/SupplierDelivery.TargetEndpoint.Api`, que expõe `POST /api/receiving` e apenas responde com 202 (sem corpo). Suba com:
+```bash
+dotnet run --project src/SupplierDelivery.TargetEndpoint.Api/SupplierDelivery.TargetEndpoint.Api.csproj --urls http://localhost:7070
+```
+Depois envie o `targetEndpoint` como `http://localhost:7070/api/receiving`.
+
 ## Configuração
 - Ajuste `appsettings*.json` para endpoints, tópico e bootstrap servers.
 - Variáveis de ambiente `Kafka__BootstrapServers`, `Kafka__Topic`, `Kafka__ClientId`, `Kafka__GroupId` podem sobrescrever.

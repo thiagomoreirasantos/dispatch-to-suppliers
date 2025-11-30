@@ -5,6 +5,7 @@ COPY SupplierDelivery.sln .
 COPY src/SupplierDelivery.Domain/SupplierDelivery.Domain.csproj src/SupplierDelivery.Domain/
 COPY src/SupplierDelivery.Producer.Api/SupplierDelivery.Producer.Api.csproj src/SupplierDelivery.Producer.Api/
 COPY src/SupplierDelivery.Consumer.Worker/SupplierDelivery.Consumer.Worker.csproj src/SupplierDelivery.Consumer.Worker/
+COPY src/SupplierDelivery.TargetEndpoint.Api/SupplierDelivery.TargetEndpoint.Api.csproj src/SupplierDelivery.TargetEndpoint.Api/
 
 RUN dotnet restore SupplierDelivery.sln
 

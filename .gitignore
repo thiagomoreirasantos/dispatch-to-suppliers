@@ -32,3 +32,10 @@ publish/
 # OS
 Thumbs.db
 Desktop.ini
+
+k6/tmp/
+k6/*.tmp
+k6/*.json
+k6/*.csv
+k6/*.html
+

@@ -11,14 +11,14 @@ RUN dotnet restore SupplierDelivery.sln
 
 COPY . .
 
-RUN dotnet publish src/SupplierDelivery.Producer.Api/SupplierDelivery.Producer.Api.csproj -c Release -o /app/publish
+RUN dotnet publish src/SupplierDelivery.TargetEndpoint.Api/SupplierDelivery.TargetEndpoint.Api.csproj -c Release -o /app/publish
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
 
 COPY --from=build /app/publish .
 
-EXPOSE 8080
-ENV ASPNETCORE_URLS=http://+:8080
+EXPOSE 7070
+ENV ASPNETCORE_URLS=http://+:7070
 
-ENTRYPOINT ["dotnet", "SupplierDelivery.Producer.Api.dll"]
+ENTRYPOINT ["dotnet", "SupplierDelivery.TargetEndpoint.Api.dll"]
