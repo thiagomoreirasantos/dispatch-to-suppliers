@@ -11,6 +11,7 @@ Simple Kafka producer/consumer solution in .NET 10 using the "dispatch products 
 ## Prerequisites
 - Docker Desktop
 - Optional: .NET 10 SDK for local builds
+- Optional:  K6 for load tests
 
 ## Run with Docker Compose
 ```bash
