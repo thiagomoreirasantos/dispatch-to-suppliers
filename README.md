@@ -56,3 +56,28 @@ Then send `targetEndpoint` as `http://localhost:7070/api/receiving`.
 ```bash
 dotnet build SupplierDelivery.sln -v minimal
 ```
+
+## Test results
+
+### Producer load (tests/load/k6/producer-load.js)
+- Rate ~40 req/s (13,035 in 5m30s); peak 26 VUs.
+- Latency: avg ~30 ms; p90 ~51 ms; p95 ~73 ms; max ~1.57 s; p95 threshold (<800 ms) satisfied.
+- Drops: 14 iterations dropped (~0.1%); 100% HTTP 202 responses.
+- Interpretation: producer API handles this load comfortably; few VUs are enough for 40 req/s.
+![Producer load result](tests/load/k6/img/Screenshot%202025-12-01%20134559.png)
+
+### Consumer load (tests/load/k6/kafka-load.js)
+- Rate 40 it/s (12,001 in 5m); no drops, no errors/retries.
+- Send latency (`kafka_writer_write_seconds`): avg ~3.4 ms; p90 ~1.5 ms; p95 ~2.0 ms; max ~135 ms; queue/batch wait negligible (p95 ~0.5 ms).
+- VUs: capped at 20 and sufficient to sustain 40 it/s.
+- Interpretation: Kafka sending is fast and stable at this load; rare tail to 135 ms with low p95.
+![Consumer load result](tests/load/k6/img/Screenshot%202025-12-01%20143051.png)
+
+#### Analysis (English)
+producer-load.js (HTTP)
+
+Throughput: ~40 req/s (13,035 in 5m30s) with only 26 VUs peak. Latency: mean ~30 ms; p90 ~51 ms; p95 ~73 ms; max ~1.57 s (long tail but rare). p95 <80 ms as per threshold. Drops: 14 dropped iterations (~0.1%). No HTTP errors (100% 202). Interpretation: the producer API responds well at this load; few VUs are enough for 40 req/s.
+
+kafka-load.js (producer Kafka)
+
+Rate: 40 it/s (12,001 in 5m). No drops, no errors/retries. Send latency: `kafka_writer_write_seconds` mean ~3.4 ms; p90 ~1.5 ms; p95 ~2.0 ms; max ~135 ms. Queue/batch negligible (p95 ~0.5 ms). VUs: steady at 20 max, enough for 40 it/s. Interpretation: Kafka send is very fast and stable at this low load. The 135 ms tail is rare; p95 stays low.
