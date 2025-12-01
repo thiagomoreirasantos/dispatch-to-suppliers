@@ -9,4 +9,6 @@ public sealed class KafkaProducerOptions
     public string Topic { get; set; } = string.Empty;
 
     public string ClientId { get; set; } = "supplier-delivery-producer";
+
+    public bool UseSynchronousProduce { get; set; }
 }
