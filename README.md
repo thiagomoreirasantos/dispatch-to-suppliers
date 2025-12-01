@@ -74,6 +74,13 @@ dotnet build SupplierDelivery.sln -v minimal
 - Interpretation: Kafka sending is fast and stable at this load; rare tail to 135 ms with low p95.
 ![Consumer load result](tests/load/k6/img/Screenshot%202025-12-01%20143051.png)
 
+### Consumer load — higher rate (tests/load/k6/kafka-load.js)
+- Rate ~3,630 it/s (435,592 in 2m) with 100 VUs constant.
+- Send latency (`kafka_writer_write_seconds`): avg ~27 ms; p90 ~44.5 ms; p95 ~53.5 ms; max ~1.15 s. Batch queue p95 ~3 ms.
+- No errors/retries; VUs fixed at 100.
+- Interpretation: sustains several thousand msgs/s, p95 ~50 ms; long tail rare.
+![Consumer load high rate](tests/load/k6/img/Screenshot%202025-12-01%20165425.png)
+
 #### Analysis
 producer-load.js (producer)
 
