@@ -1,5 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Serilog;
 using SupplierDelivery.Producer.Api.Contracts;
 using SupplierDelivery.Producer.Api.Options;
@@ -15,7 +17,15 @@ builder.Host.UseSerilog((context, services, loggerConfiguration) =>
 
 builder.Services.Configure<KafkaProducerOptions>(
     builder.Configuration.GetSection(KafkaProducerOptions.SectionName));
-builder.Services.AddSingleton<IProductDispatchProducer, KafkaProductDispatchProducer>();
+
+builder.Services.AddSingleton<IProductDispatchProducer>(provider =>
+{
+    var options = provider.GetRequiredService<IOptions<KafkaProducerOptions>>();
+
+    return options.Value.UseSynchronousProduce
+        ? ActivatorUtilities.CreateInstance<KafkaSynchronousProductDispatchProducer>(provider)
+        : ActivatorUtilities.CreateInstance<KafkaProductDispatchProducer>(provider);
+});
 builder.Services.AddScoped<DispatchApplicationService>();
 
 builder.Services.AddProblemDetails();

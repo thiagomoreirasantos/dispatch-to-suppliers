@@ -38,4 +38,4 @@ k6/*.tmp
 k6/*.json
 k6/*.csv
 k6/*.html
-
+tests/load/k6/results/

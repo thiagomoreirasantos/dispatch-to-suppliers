@@ -6,16 +6,16 @@ using SupplierDelivery.Producer.Api.Options;
 
 namespace SupplierDelivery.Producer.Api.Services;
 
-public sealed class KafkaProductDispatchProducer : IProductDispatchProducer, IDisposable
+public sealed class KafkaSynchronousProductDispatchProducer : IProductDispatchProducer, IDisposable
 {
-    private readonly ILogger<KafkaProductDispatchProducer> _logger;
+    private readonly ILogger<KafkaSynchronousProductDispatchProducer> _logger;
     private readonly KafkaProducerOptions _options;
     private readonly IProducer<string, string> _producer;
     private readonly JsonSerializerOptions _serializerOptions = new(JsonSerializerDefaults.Web);
     private bool _disposed;
 
-    public KafkaProductDispatchProducer(
-        ILogger<KafkaProductDispatchProducer> logger,
+    public KafkaSynchronousProductDispatchProducer(
+        ILogger<KafkaSynchronousProductDispatchProducer> logger,
         IOptions<KafkaProducerOptions> options)
     {
         _logger = logger;
@@ -42,20 +42,25 @@ public sealed class KafkaProductDispatchProducer : IProductDispatchProducer, IDi
         _producer = new ProducerBuilder<string, string>(config)
             .SetErrorHandler((_, error) =>
             {
-                _logger.LogError("Kafka producer error: {Reason} (IsFatal={IsFatal})", error.Reason, error.IsFatal);
+                _logger.LogError(
+                    "Kafka producer error (sync): {Reason} (IsFatal={IsFatal})",
+                    error.Reason,
+                    error.IsFatal);
             })
             .Build();
     }
 
-    public async Task ProduceAsync(ProductDispatchMessage dispatch, CancellationToken cancellationToken)
+    public Task ProduceAsync(ProductDispatchMessage dispatch, CancellationToken cancellationToken)
     {
-        var options = new ParallelOptions
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var processorCount = Environment.ProcessorCount;
+
+        Parallel.ForEach(new[] { dispatch }, new ParallelOptions
         {
             CancellationToken = cancellationToken,
-            MaxDegreeOfParallelism = Environment.ProcessorCount
-        };
-
-        await Parallel.ForEachAsync(new[] { dispatch }, options, async (item, token) =>
+            MaxDegreeOfParallelism = processorCount
+        }, item =>
         {
             var message = new Message<string, string>
             {
@@ -64,20 +69,32 @@ public sealed class KafkaProductDispatchProducer : IProductDispatchProducer, IDi
             };
 
             _logger.LogInformation(
-                "Publishing dispatch {DispatchId} for supplier {SupplierId} to topic {Topic}",
+                "Publishing dispatch {DispatchId} for supplier {SupplierId} to topic {Topic} (sync)",
                 item.DispatchId,
                 item.SupplierId,
                 _options.Topic);
 
-            var deliveryResult = await _producer
-                .ProduceAsync(_options.Topic, message, token)
-                .ConfigureAwait(false);
+            try
+            {
+                _producer.Produce(_options.Topic, message);
 
-            _logger.LogInformation(
-                "Dispatch {DispatchId} delivered to {TopicPartitionOffset}",
-                item.DispatchId,
-                deliveryResult.TopicPartitionOffset);
+                _logger.LogInformation(
+                    "Dispatch {DispatchId} delivered to topic {Topic} (sync)",
+                    item.DispatchId,
+                    _options.Topic);
+            }
+            catch (ProduceException<string, string> exception)
+            {
+                _logger.LogError(
+                    exception,
+                    "Failed to deliver dispatch {DispatchId} to topic {Topic} (sync)",
+                    item.DispatchId,
+                    _options.Topic);
+                throw;
+            }
         });
+
+        return Task.CompletedTask;
     }
 
     public void Dispose()
