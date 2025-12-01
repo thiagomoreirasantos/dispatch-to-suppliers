@@ -66,8 +66,14 @@ public sealed class ProductDispatchConsumerService : BackgroundService
 
                 if (result?.Message?.Value is null)
                 {
+                    _logger.LogDebug("Received null/empty message at {TopicPartitionOffset}", result?.TopicPartitionOffset);
                     continue;
                 }
+
+                _logger.LogDebug(
+                    "Consuming dispatch key {Key} at {TopicPartitionOffset}",
+                    result.Message.Key,
+                    result.TopicPartitionOffset);
 
                 var dispatchMessage = JsonSerializer.Deserialize<ProductDispatchMessage>(
                     result.Message.Value,
@@ -81,6 +87,11 @@ public sealed class ProductDispatchConsumerService : BackgroundService
 
                 await _processor.ProcessAsync(dispatchMessage, stoppingToken);
                 _consumer.Commit(result);
+
+                _logger.LogInformation(
+                    "Dispatch {DispatchId} processed and committed at {TopicPartitionOffset}",
+                    dispatchMessage.DispatchId,
+                    result.TopicPartitionOffset);
             }
             catch (ConsumeException consumeException)
             {
@@ -91,6 +102,7 @@ public sealed class ProductDispatchConsumerService : BackgroundService
             }
             catch (OperationCanceledException)
             {
+                _logger.LogInformation("Stopping consumer due to cancellation request");
                 break;
             }
             catch (Exception exception)

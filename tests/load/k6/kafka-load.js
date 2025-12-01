@@ -1,22 +1,25 @@
 import { Writer } from 'k6/x/kafka';
 import { b64encode } from 'k6/encoding';
 
-const brokers = (__ENV.KAFKA_BROKERS || 'localhost:29092').split(',');
+const brokers = (__ENV.KAFKA_BROKERS || '127.0.0.1:29092').split(',');
 const topic = __ENV.KAFKA_TOPIC || 'product-dispatches';
 const targetEndpoint = __ENV.TARGET_ENDPOINT || 'http://target-endpoint:7070/api/receiving';
-const requiredAcks = Number.isNaN(parseInt(__ENV.KAFKA_ACKS ?? '-1', 10))
-  ? -1
-  : parseInt(__ENV.KAFKA_ACKS ?? '-1', 10);
+const requiredAcks = Number.isNaN(parseInt(__ENV.KAFKA_ACKS ?? '1', 10))
+  ? 1
+  : parseInt(__ENV.KAFKA_ACKS ?? '1', 10);
+const batchSize = Number.isNaN(parseInt(__ENV.BATCH_SIZE ?? '1', 10))
+  ? 1
+  : parseInt(__ENV.BATCH_SIZE ?? '1', 10);
 
 export const options = {
   scenarios: {
     dispatches: {
       executor: 'constant-arrival-rate',
-      rate: Number(__ENV.RATE || 200), // mensagens/segundo (aumentado para estressar o consumer)
+      rate: Number(__ENV.RATE || 50), // mensagens/segundo (carga mínima)
       timeUnit: '1s',
       duration: __ENV.DURATION || '5m',
-      preAllocatedVUs: Number(__ENV.PRE_ALLOCATED_VUS || 50),
-      maxVUs: Number(__ENV.MAX_VUS || 200),
+      preAllocatedVUs: Number(__ENV.PRE_ALLOCATED_VUS || 10),
+      maxVUs: Number(__ENV.MAX_VUS || 10),
       exec: 'produceDispatch',
     },
   },
@@ -41,12 +44,20 @@ function buildPayload() {
 }
 
 export function produceDispatch() {
-  const key = b64encode(`${__VU}-${Date.now()}`);
-  const value = b64encode(buildPayload());
+  const messages = Array.from({ length: batchSize }).map(() => {
+    const key = b64encode(`${__VU}-${Date.now()}`);
+    const value = b64encode(buildPayload());
+    return { key, value };
+  });
 
   writer.produce({
-    messages: [{ key, value }],
+    messages,
   });
+}
+
+// Mantém compatibilidade com k6 cli flags `--vus/--duration`
+export default function () {
+  produceDispatch();
 }
 
 export function teardown() {

@@ -19,6 +19,11 @@ public sealed class RestProductDispatchProcessor : IProductDispatchProcessor
 
     public async Task ProcessAsync(ProductDispatchMessage message, CancellationToken cancellationToken)
     {
+        _logger.LogDebug(
+            "Sending dispatch {DispatchId} to endpoint {Endpoint}",
+            message.DispatchId,
+            message.TargetEndpoint);
+
         using var response = await _httpClient.PostAsJsonAsync(
             message.TargetEndpoint,
             message,
